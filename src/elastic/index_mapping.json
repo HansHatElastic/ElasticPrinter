@@ -1,0 +1,77 @@
+{
+  "mappings": {
+    "properties": {
+      "data": {
+        "type": "binary"
+      },
+      "attachment": {
+        "properties": {
+          "content": {
+            "type": "text"
+          },
+          "title": {
+            "type": "text"
+          },
+          "author": {
+            "type": "text"
+          },
+          "date": {
+            "type": "date"
+          },
+          "content_type": {
+            "type": "keyword"
+          },
+          "content_length": {
+            "type": "long"
+          }
+        }
+      },
+      "print_job": {
+        "properties": {
+          "job_id": {
+            "type": "keyword"
+          },
+          "user": {
+            "type": "keyword"
+          },
+          "title": {
+            "type": "text"
+          },
+          "timestamp": {
+            "type": "date"
+          },
+          "printer": {
+            "type": "keyword"
+          },
+          "hostname": {
+            "type": "keyword"
+          },
+          "copies": {
+            "type": "integer"
+          }
+        }
+      },
+      "document": {
+        "properties": {
+          "file_size": {
+            "type": "long"
+          },
+          "page_count": {
+            "type": "integer"
+          },
+          "pdf_metadata": {
+            "type": "object",
+            "enabled": true
+          }
+        }
+      },
+      "indexed_at": {
+        "type": "date"
+      }
+    }
+  },
+  "settings": {
+    "number_of_shards": 1,
+    "number_of_replicas": 1
+  }
+}

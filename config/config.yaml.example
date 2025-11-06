@@ -1,0 +1,43 @@
+elasticsearch:
+  # Elasticsearch cluster URL (include port, e.g., :9200 or :443)
+  host: "https://your-cluster.elastic.cloud:443"
+  
+  # Authentication - Use ONE of the following methods:
+  
+  # Method 1: Encoded API Key (recommended for Elasticsearch Serverless)
+  # This is a base64-encoded string like "abc123xyz..."
+  api_key: "your_encoded_api_key"
+  
+  # Method 2: API Key ID and Secret (tuple format)
+  # Uncomment these if using this method (comment out the api_key above)
+  # api_key_id: "your_api_key_id"
+  # api_key: "your_api_key_secret"
+  
+  # Method 3: Basic Authentication (username/password)
+  # Uncomment these if using this method (comment out api_key options above)
+  # username: "elastic"
+  # password: "your_password"
+  
+  # Index name for storing print jobs
+  index: "print-jobs"
+  
+  # Ingest pipeline name for content extraction
+  pipeline: "attachment"
+  
+  # SSL certificate verification (set to false for self-signed certs in dev)
+  verify_certs: true
+  
+printer:
+  name: "ElasticPrinter"
+  description: "Virtual Printer to Elasticsearch"
+  location: "Cloud Storage"
+  
+processing:
+  temp_dir: "/tmp/elasticprinter"
+  keep_pdfs: false  # Set to true for debugging
+  max_retries: 3
+  timeout: 30
+  
+logging:
+  level: "INFO"
+  file: "/var/log/elasticprinter/app.log"
