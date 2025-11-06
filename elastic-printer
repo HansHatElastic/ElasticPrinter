@@ -84,9 +84,8 @@ def send_to_elasticsearch(document_data, metadata):
         )
         
         response.raise_for_status()
-        result = response.json()
-        # Don't log the full response as it may contain sensitive info
-        logger.info(f"Document sent to Elasticsearch successfully. ID: {result.get('_id', 'unknown')}")
+        # Successfully sent to Elasticsearch
+        logger.info("Document sent to Elasticsearch successfully")
         return True
         
     except ImportError:
