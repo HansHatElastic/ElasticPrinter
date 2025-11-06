@@ -1,0 +1,13 @@
+{
+  "elastic_url": "http://localhost:9200",
+  "elastic_index": "printed-documents",
+  "elastic_username": "",
+  "elastic_password": "",
+  "description": "ElasticPrinter Configuration File",
+  "instructions": {
+    "elastic_url": "The URL of your Elasticsearch cluster (e.g., http://localhost:9200 or https://my-cluster.es.io:9243)",
+    "elastic_index": "The index name where documents will be stored (default: printed-documents)",
+    "elastic_username": "Username for Elasticsearch authentication (leave empty if not required)",
+    "elastic_password": "Password for Elasticsearch authentication (leave empty if not required)"
+  }
+}

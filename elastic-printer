@@ -1,0 +1,205 @@
+#!/usr/bin/env python3
+"""
+ElasticPrinter - CUPS Backend for printing to Elasticsearch
+This backend receives print jobs from CUPS and sends them to an Elasticsearch cluster.
+"""
+
+import sys
+import os
+import json
+import base64
+import tempfile
+import logging
+from datetime import datetime
+from pathlib import Path
+
+# Configure logging
+LOG_DIR = Path.home() / ".elasticprinter" / "logs"
+LOG_DIR.mkdir(parents=True, exist_ok=True)
+LOG_FILE = LOG_DIR / "elastic-printer.log"
+
+logging.basicConfig(
+    filename=str(LOG_FILE),
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s'
+)
+logger = logging.getLogger(__name__)
+
+def load_config():
+    """Load configuration from config file."""
+    config_path = Path.home() / ".elasticprinter" / "config.json"
+    
+    if not config_path.exists():
+        logger.warning(f"Config file not found at {config_path}, using defaults")
+        return {
+            "elastic_url": os.environ.get("ELASTIC_URL", "http://localhost:9200"),
+            "elastic_index": os.environ.get("ELASTIC_INDEX", "printed-documents"),
+            "elastic_username": os.environ.get("ELASTIC_USERNAME", ""),
+            "elastic_password": os.environ.get("ELASTIC_PASSWORD", "")
+        }
+    
+    try:
+        with open(config_path, 'r') as f:
+            return json.load(f)
+    except Exception as e:
+        logger.error(f"Error loading config: {e}")
+        return {}
+
+def send_to_elasticsearch(document_data, metadata):
+    """Send document to Elasticsearch cluster."""
+    try:
+        import requests
+        from requests.auth import HTTPBasicAuth
+        
+        config = load_config()
+        elastic_url = config.get("elastic_url", "http://localhost:9200")
+        elastic_index = config.get("elastic_index", "printed-documents")
+        username = config.get("elastic_username", "")
+        password = config.get("elastic_password", "")
+        
+        # Prepare the document
+        doc = {
+            "timestamp": datetime.utcnow().isoformat(),
+            "job_id": metadata.get("job_id"),
+            "title": metadata.get("title"),
+            "user": metadata.get("user"),
+            "copies": metadata.get("copies"),
+            "options": metadata.get("options"),
+            "document_data": document_data,
+            "size_bytes": len(document_data) if document_data else 0
+        }
+        
+        # Send to Elasticsearch
+        url = f"{elastic_url}/{elastic_index}/_doc"
+        
+        auth = None
+        if username and password:
+            auth = HTTPBasicAuth(username, password)
+        
+        response = requests.post(
+            url,
+            json=doc,
+            auth=auth,
+            headers={"Content-Type": "application/json"}
+        )
+        
+        response.raise_for_status()
+        logger.info(f"Document sent to Elasticsearch: {response.json()}")
+        return True
+        
+    except ImportError:
+        logger.error("requests library not found. Install with: pip3 install requests")
+        return False
+    except Exception as e:
+        logger.error(f"Error sending to Elasticsearch: {e}")
+        return False
+
+def discover_printers():
+    """CUPS backend discovery mode - called with no arguments."""
+    # Network discovery format: network URI "Description" "Location"
+    print('network elastic-printer "ElasticPrinter" "Virtual Printer to Elasticsearch"')
+    sys.exit(0)
+
+def read_print_job():
+    """Read the print job data from stdin."""
+    try:
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+            # Read binary data from stdin
+            data = sys.stdin.buffer.read()
+            tmp_file.write(data)
+            tmp_path = tmp_file.name
+            
+        logger.info(f"Print job saved to temporary file: {tmp_path}")
+        
+        # Read the file and encode as base64
+        with open(tmp_path, 'rb') as f:
+            file_data = f.read()
+            
+        # Clean up temp file
+        os.unlink(tmp_path)
+        
+        # Encode as base64 for JSON storage
+        return base64.b64encode(file_data).decode('utf-8')
+        
+    except Exception as e:
+        logger.error(f"Error reading print job: {e}")
+        return None
+
+def main():
+    """Main entry point for CUPS backend."""
+    # Log all arguments for debugging
+    logger.info(f"ElasticPrinter backend called with args: {sys.argv}")
+    
+    # CUPS backend protocol:
+    # - 0 args: discovery mode
+    # - 5 args: job is on stdin (job-id user title copies options)
+    # - 6 args: job is in a file (job-id user title copies options file)
+    
+    argc = len(sys.argv)
+    
+    if argc == 1:
+        # Discovery mode
+        discover_printers()
+    
+    if argc not in [6, 7]:
+        logger.error(f"Invalid number of arguments: {argc}")
+        print("ERROR: Invalid arguments", file=sys.stderr)
+        sys.exit(1)
+    
+    # Parse arguments
+    job_id = sys.argv[1]
+    user = sys.argv[2]
+    title = sys.argv[3]
+    copies = sys.argv[4]
+    options = sys.argv[5]
+    
+    metadata = {
+        "job_id": job_id,
+        "user": user,
+        "title": title,
+        "copies": copies,
+        "options": options
+    }
+    
+    logger.info(f"Processing print job: {metadata}")
+    
+    # Read the document
+    if argc == 7:
+        # Job is in a file
+        filename = sys.argv[6]
+        logger.info(f"Reading from file: {filename}")
+        try:
+            with open(filename, 'rb') as f:
+                document_data = base64.b64encode(f.read()).decode('utf-8')
+        except Exception as e:
+            logger.error(f"Error reading file: {e}")
+            print(f"ERROR: Could not read file: {e}", file=sys.stderr)
+            sys.exit(1)
+    else:
+        # Job is on stdin
+        logger.info("Reading from stdin")
+        document_data = read_print_job()
+        
+        if document_data is None:
+            print("ERROR: Could not read print job", file=sys.stderr)
+            sys.exit(1)
+    
+    # Send to Elasticsearch
+    logger.info("Sending document to Elasticsearch")
+    success = send_to_elasticsearch(document_data, metadata)
+    
+    if success:
+        logger.info("Print job completed successfully")
+        sys.exit(0)
+    else:
+        logger.error("Failed to send document to Elasticsearch")
+        print("ERROR: Failed to send to Elasticsearch", file=sys.stderr)
+        sys.exit(1)
+
+if __name__ == "__main__":
+    try:
+        main()
+    except Exception as e:
+        logger.error(f"Unexpected error: {e}", exc_info=True)
+        print(f"ERROR: {e}", file=sys.stderr)
+        sys.exit(1)
