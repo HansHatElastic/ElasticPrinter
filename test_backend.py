@@ -39,7 +39,7 @@ def test_discovery_mode():
     import subprocess
     
     result = subprocess.run(
-        ['python3', 'elastic-printer'],
+        [sys.executable, 'elastic-printer'],
         capture_output=True,
         text=True
     )

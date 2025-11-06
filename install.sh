@@ -54,10 +54,15 @@ if ! command -v python3 &> /dev/null; then
 fi
 
 # Install requests library
-python3 -m pip install --quiet requests 2>/dev/null || {
-    echo "   ✗ Warning: Could not install requests library automatically"
-    echo "   Please run: pip3 install requests"
-}
+if python3 -m pip show requests &> /dev/null; then
+    echo "   ✓ requests library already installed"
+else
+    echo "   Installing requests library..."
+    python3 -m pip install --user --quiet requests 2>/dev/null || {
+        echo "   ✗ Warning: Could not install requests library automatically"
+        echo "   Please run: pip3 install --user requests"
+    }
+fi
 
 echo "   ✓ Python dependencies checked"
 

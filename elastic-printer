@@ -10,7 +10,7 @@ import json
 import base64
 import tempfile
 import logging
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 # Configure logging
@@ -59,7 +59,7 @@ def send_to_elasticsearch(document_data, metadata):
         
         # Prepare the document
         doc = {
-            "timestamp": datetime.utcnow().isoformat(),
+            "timestamp": datetime.now(timezone.utc).isoformat(),
             "job_id": metadata.get("job_id"),
             "title": metadata.get("title"),
             "user": metadata.get("user"),
@@ -132,8 +132,8 @@ def main():
     
     # CUPS backend protocol:
     # - 0 args: discovery mode
-    # - 5 args: job is on stdin (job-id user title copies options)
-    # - 6 args: job is in a file (job-id user title copies options file)
+    # - 6 args: job is on stdin (argv[0] job-id user title copies options)
+    # - 7 args: job is in a file (argv[0] job-id user title copies options file)
     
     argc = len(sys.argv)
     
