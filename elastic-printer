@@ -92,8 +92,9 @@ def send_to_elasticsearch(document_data, metadata):
         logger.error("requests library not found. Install with: pip3 install requests")
         return False
     except Exception as e:
-        # Don't log the exception details as they may contain credentials
-        logger.error("Error sending to Elasticsearch. Check credentials and connection.")
+        # Log error type without details that might contain credentials
+        error_type = type(e).__name__
+        logger.error(f"Error sending to Elasticsearch: {error_type}. Check credentials and connection.")
         return False
 
 def discover_printers():
@@ -105,7 +106,8 @@ def discover_printers():
 def read_print_job():
     """Read the print job data from stdin."""
     try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.pdf') as tmp_file:
+        # Use generic suffix since format could be PDF, PostScript, text, etc.
+        with tempfile.NamedTemporaryFile(delete=False, suffix='.bin') as tmp_file:
             # Read binary data from stdin
             data = sys.stdin.buffer.read()
             tmp_file.write(data)
